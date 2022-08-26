@@ -1,0 +1,7 @@
+.env
+node_modules
+client/public/bundle.js
+client/public/bundle.js.map
+client/coverage
+client/test/__snapshots__
+server/coverage

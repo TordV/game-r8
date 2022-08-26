@@ -1,0 +1,66 @@
+# CICD-file template from Ole Christian Eidheim
+# For some reason, the tests ran does not seem to be updated to the newest tests in the client/test, server/test folders. We are not sure why this is, and have found no solution.
+image: node:latest # Use a docker image from https://hub.docker.com with latest Node.js already installed
+
+variables:
+  # Configure server/src/mysql-pool.js
+  MYSQL_HOST: localhost
+  MYSQL_USER: test # Docker commands are run as root
+  MYSQL_PASSWORD: test # Default root password is empty string
+  MYSQL_DATABASE: test
+
+stages:
+  - build # Jobs placed in build stage will run first
+  - test # Jobs placed in test stage will run after build-jobs
+
+install:
+  stage: build
+  script:
+    - cd server
+    - npm install
+    - cd ../client
+    - npm install
+  artifacts: # Keep node_modules folder for the following stages
+    paths:
+      - server/node_modules
+      - client/node_modules
+
+test-client:
+  stage: test 
+  script: 
+    - cd client/
+    - npm run test
+    - ./node_modules/.bin/tsc --noEmit
+
+test-api-calls:
+  stage: test
+  script:
+    - apt-get update
+    - apt-get -y upgrade
+    - apt-get -y install default-mysql-server
+    - service mariadb start
+    - mysqladmin create $MYSQL_DATABASE
+    # Create database table
+    - >
+      echo "CREATE TABLE users (user_id INT NOT NULL AUTO_INCREMENT,username VARCHAR(16) NOT NULL, passwd CHAR(128) NOT NULL, PRIMARY KEY(user_id));" | mysql $MYSQL_DATABASE
+
+      echo "CREATE TABLE game (game_id INT NOT NULL, title VARCHAR(255), cover VARCHAR(255), genres VARCHAR(999), PRIMARY KEY(game_id));" | mysql $MYSQL_DATABASE
+
+      echo "CREATE TABLE review (review_id INT NOT NULL AUTO_INCREMENT, user_id INT NOT NULL, game_id INT NOT NULL, title VARCHAR(32) NOT NULL, details VARCHAR(255), rating CHAR(1) NOT NULL, relevance INT DEFAULT 0, review_date DATE NOT NULL, PRIMARY KEY(review_id), CONSTRAINT FK_review1 FOREIGN KEY(user_id) REFERENCES users(user_id), CONSTRAINT FK_review2 FOREIGN KEY(game_id) REFERENCES game(game_id));" | mysql $MYSQL_DATABASE
+
+      echo "CREATE TABLE user_games (user_id INT NOT NULL,  game_id INT NOT NULL, PRIMARY KEY (user_id, game_id), CONSTRAINT FK_user_games1 FOREIGN KEY (user_id) REFERENCES users(user_id), CONSTRAINT FK_user_games2 FOREIGN KEY (game_id) REFERENCES game(game_id));" | mysql $MYSQL_DATABASE
+
+    # Add test user and grant access
+    - >
+      echo "CREATE USER '$MYSQL_USER'@'%' IDENTIFIED BY '$MYSQL_PASSWORD'; GRANT ALL PRIVILEGES ON
+      $MYSQL_DATABASE.* TO '$MYSQL_USER'@'%'; FLUSH PRIVILEGES;" | mysql
+      # Add user to DB
+    - >
+      echo "INSERT INTO users (username, passwd) VALUES ('erling_test', 'Testpasswd89');" | mysql $MYSQL_DATABASE
+
+    - cd server
+    - echo "" > test/.env # Create empty .env in test folder to avoid error on npm test
+    - echo "" > ./.env # Create empty .env file in root to avoid error. 
+    # Workaround for strange gitlab ci bug
+    - export MYSQL_HOST=127.0.0.1
+    - npm run test
