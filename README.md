@@ -4,8 +4,7 @@ Website to review your favorite games. Built with React.
 
 ## ☄️ Download program
 
-- To download the program, clone the project with HTTPS
-  `git clone https://gitlab.stud.idi.ntnu.no/tordvale/game-r8.git`.
+- Clone the project to your machine
 
 ## 📌 Recommendations & Dependencies
 
