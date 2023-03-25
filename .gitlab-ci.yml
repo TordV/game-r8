@@ -1,5 +1,4 @@
 # CICD-file template from Ole Christian Eidheim
-# For some reason, the tests ran does not seem to be updated to the newest tests in the client/test, server/test folders. We are not sure why this is, and have found no solution.
 image: node:latest # Use a docker image from https://hub.docker.com with latest Node.js already installed
 
 variables:
